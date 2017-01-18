@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CsQuery.Implementation;
 using Evernote.EDAM.NoteStore;
 using Evernote.EDAM.Type;
 using EvernoteSDK;
@@ -100,10 +101,24 @@ namespace EvernoteRecipesByTag
 
         private static IEnumerable<Note> FindNotes(NoteFilter noteFilter)
         {
-            // TODO: make several paged calls
-            NoteList noteList = _recipesStore.FindNotes(noteFilter, 0, 1000);
-            List<Note> notes = noteList.Notes;
-            return notes;
+            int offset = 0;
+            int pageSize = 50;
+            int totalSize = -1;
+
+            do
+            {
+                if (totalSize > -1)
+                {
+                    pageSize = Math.Min(pageSize, totalSize - offset);
+                }
+                NoteList noteList = _recipesStore.FindNotes(noteFilter, offset, pageSize);
+                totalSize = noteList.TotalNotes;
+                offset += noteList.Notes.Count;
+                foreach (var note in noteList.Notes)
+                {
+                    yield return note;
+                }
+            } while (offset < totalSize);
         }
     }
 }
