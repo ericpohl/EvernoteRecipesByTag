@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using CsQuery.Implementation;
+
 using Evernote.EDAM.NoteStore;
 using Evernote.EDAM.Type;
-using EvernoteSDK;
 using EvernoteSDK.Advanced;
 
 namespace EvernoteRecipesByTag
@@ -37,6 +36,17 @@ namespace EvernoteRecipesByTag
                 notestoreUrl = Console.ReadLine();
             }
 
+            string outputPath;
+            if (args.Length > 2)
+            {
+                outputPath = args[2];
+            }
+            else
+            {
+                Console.WriteLine("Enter output path:");
+                outputPath = Console.ReadLine();
+            }
+
             ENSessionAdvanced.SetSharedSessionDeveloperToken(
                 developerToken,
                 notestoreUrl);
@@ -50,13 +60,13 @@ namespace EvernoteRecipesByTag
             var recipesByTag = new Dictionary<string, IList<string>>();
             foreach (var note in FindNotes(new NoteFilter()))
             {
-                //Console.WriteLine("{0}", note.Title);
                 foreach (string tagName in GetTagNames(note))
                 {
                     IList<string> recipeNames;
                     if (recipesByTag.TryGetValue(tagName, out recipeNames))
                     {
-                        recipeNames.Add(note.Title);
+                        string title = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(note.Title);
+                        recipeNames.Add(title);
                     }
                     else
                     {
@@ -66,16 +76,38 @@ namespace EvernoteRecipesByTag
                 }
             }
 
+            using (var writer = new StreamWriter(outputPath))
+            {
+                WriteRecipesByTag(recipesByTag, writer);
+            }
+        }
+
+        private static void WriteRecipesByTag(Dictionary<string, IList<string>> recipesByTag, TextWriter textWriter)
+        {
             var tagNames = recipesByTag.Keys.OrderBy(k => k);
             foreach (string tagName in tagNames)
             {
-                Console.WriteLine();
-                Console.WriteLine(tagName);
-                foreach (string recipeName in recipesByTag[tagName])
+                textWriter.WriteLine();
+                textWriter.WriteLine(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(tagName));
+                foreach (string recipeName in recipesByTag[tagName].OrderBy(TrimLeadingArticle))
                 {
-                    Console.WriteLine("\t{0}", recipeName);
+                    textWriter.WriteLine("\t{0}", recipeName);
                 }
             }
+        }
+
+        private static string TrimLeadingArticle(string s)
+        {
+            var articles = new string[] {"the", "a", "an"};
+            foreach (string article in articles)
+            {
+                if (s.IndexOf(article + " ", StringComparison.CurrentCultureIgnoreCase) == 0)
+                {
+                    return s.Substring(article.Length + 1).Trim();
+                }
+            }
+
+            return s;
         }
 
         private static readonly List<string> EmptyTagGuids = new List<string>();
