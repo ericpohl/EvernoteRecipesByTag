@@ -89,9 +89,10 @@ namespace EvernoteRecipesByTag
             {
                 textWriter.WriteLine();
                 textWriter.WriteLine(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(tagName));
+                textWriter.WriteLine();
                 foreach (string recipeName in recipesByTag[tagName].OrderBy(TrimLeadingArticle))
                 {
-                    textWriter.WriteLine("\t{0}", recipeName);
+                    textWriter.WriteLine(recipeName);
                 }
             }
         }
